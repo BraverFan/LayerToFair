@@ -1,0 +1,75 @@
+import torch
+from models import AdultCensusModel
+from utils import compute_metrics, preprocess_adult_census
+from sa import SimulatedAnnealingRepair
+
+
+if __name__ == "__main__":
+    layer_sizes = [64, 128, 256, 256, 256, 256, 128, 64]
+    k_min = 2
+    k_max = 420
+    sens_classes = [0.0, 1.0]
+    adult_race = (23, 27)
+
+    model_paths = [
+        'adult-0.6896-982398492-ss-0.2.pt',
+        'adult-0.6949-56283202-ss-0.2.pt',
+        'adult-0.7004-10989034-ss-0.2.pt',
+
+        'adult-0.7106-72384123-ss-0.2.pt',
+        'adult-0.6997-555293809-ss-0.2.pt',
+        'adult-0.6972-190380901-ss-0.2.pt',
+        'adult-0.7005-798457928-ss-0.2.pt',
+        'adult-0.6945-66628392-ss-0.2.pt',
+        'adult-0.6923-76532891-ss-0.2.pt',
+    ]
+
+    for model_path in model_paths:
+        _, _, seed, _, dropout = model_path[:-3].split("-")
+        seed = int(seed)
+        p = float(dropout)
+        dataset = "adult_race"
+
+        _, X_val, X_test, _, y_val, y_test, sens_idx = preprocess_adult_census(seed)
+        sens_val = X_val[:, adult_race[0] : adult_race[1]]
+        sens_test = X_test[:, adult_race[0]: adult_race[1]]
+        sens_classes = [0, 1]
+
+        model = AdultCensusModel(p=p)
+        state_dict = torch.load(f"../saved_models/adult/{model_path}", map_location=torch.device('cpu'))
+        model.load_state_dict(state_dict)
+        # model.load_state_dict(torch.load(f"../saved_models/adult/{model_path}"))
+        model.eval()
+
+        baseline_eod, baseline_dpd, baseline_di, baseline_f1, baseline_acc = compute_metrics(
+            model, X_val, y_val, sens_val, sens_classes, dataset
+        )
+        print("\nValidation Set Baseline Metrics:")
+        print(f"EOD: {baseline_eod:.4f}")
+        print(f"DPD: {baseline_dpd:.4f}")
+        print(f"DI: {baseline_di:.4f}")
+        print(f"F1: {baseline_f1:.4f}")
+        print(f"Accuracy: {baseline_acc:.4f}")
+
+        baseline_eod_test, baseline_dpd_test, baseline_di_test, baseline_f1_test, baseline_acc_test = compute_metrics(
+            model, X_test, y_test, sens_test, sens_classes, dataset
+        )
+        print("\nTest Set Baseline Metrics:")
+        print(f"EOD: {baseline_eod_test:.4f}")
+        print(f"DPD: {baseline_dpd_test:.4f}")
+        print(f"DI: {baseline_di_test:.4f}")
+        print(f"F1: {baseline_f1_test:.4f}")
+        print(f"Accuracy: {baseline_acc_test:.4f}")
+
+        obj = SimulatedAnnealingRepair(
+            model_path=model_path,
+            layer_sizes=layer_sizes,
+            k_min=k_min,
+            k_max=k_max,
+            baseline_eod=baseline_eod,
+            sens_idx_range=adult_race,
+            sens_multi_dataset="adult_race",
+            logfile="./sa_runs/Adult_race/{}_5.log".format(seed),
+        )
+
+        obj.estimate_init_temp_and_run(chi_0=0.75, T0=5.0, p=5, eps=1e-3, decay="log")
