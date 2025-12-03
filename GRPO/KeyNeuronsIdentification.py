@@ -19,20 +19,14 @@ class KeyNeuronsIdentification:
         self.key_neurons = {}
         self.dataset = dataset
         self.sens_classes = sens_classes
-
-        # 处理敏感属性列（将其标准化为0/1标签）
         self._process_sensitive_attribute()
 
     def _process_sensitive_attribute(self):
-        # 保留原始副本
         X_val_processed = self.X_val.clone() if isinstance(self.X_val, torch.Tensor) else self.X_val.copy()
         self.X_val_processed = X_val_processed
 
-        # 处理敏感属性
         if self.dataset == "adult_race":
-            # 取出 one-hot 四列（23, 24, 25, 26）表示种族
             sens_val_onehot = self.X_val[:, 23:27]
-            # 第26列是 white 的 one-hot 标志
             white_mask = (sens_val_onehot[:, 3] == 1)
             self.sens_val_processed = white_mask.to(dtype=torch.int64)
             print("adult-race...")
@@ -45,7 +39,6 @@ class KeyNeuronsIdentification:
             print("meps.....")
             self.sens_val_processed = sens_val_column.to(dtype=torch.int64)
         else:
-            # 默认：使用 sens_idx 取出某列敏感属性
             sens_val_column = self.X_val[:, self.sens_idx]
 
             if torch.is_floating_point(sens_val_column) and not torch.all((sens_val_column == 0) | (sens_val_column == 1)):
@@ -61,7 +54,6 @@ class KeyNeuronsIdentification:
         print("Processed X_val:", self.X_val_processed)
         print("Processed sensitive attribute:", self.sens_val_processed)
 
-        # Forward pass to get hidden outputs
         _ = self.model(self.X_val_processed)
 
         total_train_time = 0
@@ -127,12 +119,12 @@ class KeyNeuronsIdentification:
             for j in range(self.layer_sizes[i]):
                 print(f"Neuron {indices[j]} - Importance: {importances[indices[j]]:.4f}")
 
-            # key_neurons = [idx for idx, imp in zip(indices, importances[indices]) if imp > self.threshold]
+             key_neurons = [idx for idx, imp in zip(indices, importances[indices]) if imp > self.threshold]
 
-           #  key_neurons = [idx for idx, imp in zip(indices, importances[indices]) if imp >= 0]
+           # key_neurons = [idx for idx, imp in zip(indices, importances[indices]) if imp >= 0]
 
-            threshold_value = np.percentile(importances, 75)
-            key_neurons = [idx for idx, imp in zip(indices, importances[indices]) if imp >= threshold_value]
+           # threshold_value = np.percentile(importances, 75)
+           # key_neurons = [idx for idx, imp in zip(indices, importances[indices]) if imp >= threshold_value]
 
            # mean_importance = np.mean(importances)
            # print(f"Mean Importance for Layer {i + 1}: {mean_importance:.4f}")
