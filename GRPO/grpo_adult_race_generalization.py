@@ -12,7 +12,7 @@ from KeyNeuronsIdentification import KeyNeuronsIdentification
 import json
 import os
 
-device = "cpu"
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class PolicyNet(nn.Module):
@@ -52,23 +52,13 @@ class PolicyNet(nn.Module):
 
 
 def collect_trajectory(env, policy_net, device="cpu"):
-    """
-    从单个环境采样一条轨迹（这个轨迹就是单步缩放）
-    env: 神经元缩放环境
-    policy_net: 策略网络
-
-    返回：state, action, log_prob, reward
-    """
-    state = env.reset()  # 重置环境
-
-    # 将状态转换为张量
+    state = env.reset() 
+    
     state_tensor = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
 
-    # 选择动作
     action_tensor, log_prob = policy_net.select_action(state_tensor)
     action = action_tensor.detach().cpu().numpy()[0]
 
-    # 执行动作
     next_state, reward, done, info = env.step(action)
 
     trajectory = {
@@ -83,9 +73,6 @@ def collect_trajectory(env, policy_net, device="cpu"):
 
 
 def collect_batch_trajectories(env, policy_net, batch_size=10, device="cpu"):
-    """
-    收集多条轨迹作为一个批次
-    """
     batch_trajectories = {
         "states": [],
         "actions": [],
@@ -109,13 +96,11 @@ def collect_batch_trajectories(env, policy_net, batch_size=10, device="cpu"):
         performance_list.append(trajectory["info"]["performance"])
         reward_list.append(trajectory["reward"])
 
-    # 将列表转换为numpy数组
     batch_trajectories["states"] = np.array(batch_trajectories["states"])
     batch_trajectories["actions"] = np.array(batch_trajectories["actions"])
     batch_trajectories["log_probs"] = np.array(batch_trajectories["log_probs"])
     batch_trajectories["rewards"] = np.array(batch_trajectories["rewards"])
 
-    # 计算信息的平均值
     avg_fairness = np.mean(fairness_list)
     avg_performance = np.mean(performance_list)
     avg_reward = np.mean(reward_list)
@@ -132,28 +117,24 @@ def collect_batch_trajectories(env, policy_net, batch_size=10, device="cpu"):
 
 
 def calc_advantages_with_grpo(trajectories):
-    """从轨迹中提取奖励，并标准化"""
-    rewards = trajectories["rewards"]  # 提取奖励
-    mean_reward = np.mean(rewards)  # 计算平均值
-    std_reward = np.std(rewards) + 1e-8  # 计算标准差（1e-8是防止0除）
-    advantages = (rewards - mean_reward) / std_reward  # 标准化
+    rewards = trajectories["rewards"] 
+    mean_reward = np.mean(rewards)  
+    std_reward = np.std(rewards) + 1e-8  
+    advantages = (rewards - mean_reward) / std_reward 
 
     return advantages
 
 
 def grpo_update(trajectories, policy_net, optimizer, device="cpu", n_iterations=20, eps=0.2):
-    # 计算标准化后的优势
     advantages = calc_advantages_with_grpo(trajectories)
 
-    # 将数据转换为张量并移动到设备
     states = torch.tensor(trajectories["states"], dtype=torch.float32, device=device)
     actions = torch.tensor(trajectories["actions"], dtype=torch.float32, device=device)
     old_log_probs = torch.tensor(trajectories["log_probs"], dtype=torch.float32, device=device)
     advantages = torch.tensor(advantages, dtype=torch.float32, device=device).unsqueeze(-1)
 
     batch_size = len(states)
-
-    # 执行n_iterations次更新
+    
     for _ in range(n_iterations):
         loss = 0
 
@@ -163,25 +144,19 @@ def grpo_update(trajectories, policy_net, optimizer, device="cpu", n_iterations=
             old_log_prob = old_log_probs[i]
             advantage = advantages[i]
 
-            # 重新评估动作的对数概率
             dist = policy_net.get_distribution(state)
             new_log_prob = dist.log_prob(action).sum(dim=-1)
 
-            # 计算概率比
             ratio = torch.exp(new_log_prob - old_log_prob)
 
-            # 计算两个surrogate项
             surr1 = ratio * advantage
             surr2 = torch.clamp(ratio, 1 - eps, 1 + eps) * advantage
 
-            # 计算损失
             trajectory_loss = -torch.min(surr1, surr2)
             loss += trajectory_loss
 
-        # 用batch_size归一化损失
         loss /= batch_size
 
-        # 更新策略网络
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -190,19 +165,16 @@ def grpo_update(trajectories, policy_net, optimizer, device="cpu", n_iterations=
 
 
 def train_grpo(env, max_time_minutes=None, max_episodes=None, batch_size=10, lr=0.002, n_iterations=10, eps=0.2, policy_net=None):
-    # 获取观测和动作维度
     obs_dim = len(env.reset())
     action_dim = len(env.candidate_neurons)
     hidden_dim = action_dim
 
-    # 创建策略网络和优化器
     if policy_net is None:
         policy_net = PolicyNet(obs_dim, action_dim, hidden_dim).to(device)
     else:
         policy_net = policy_net.to(device)
     optimizer = torch.optim.Adam(policy_net.parameters(), lr=lr)
 
-    # 记录训练历史
     history = {
         "episode_rewards": [],
         "fairness": [],
@@ -217,18 +189,14 @@ def train_grpo(env, max_time_minutes=None, max_episodes=None, batch_size=10, lr=
 
     with tqdm() as pbar:
         while True:
-            # 检查退出条件
             if max_episodes is not None and episode >= max_episodes:
                 break
             if max_time_minutes is not None and (time.time() - start_time) > max_time_minutes * 60:
                 break
-            # 收集一批轨迹
             trajectories, avg_reward, info = collect_batch_trajectories(env, policy_net, batch_size, device)
 
-            # 使用GRPO更新策略
             loss = grpo_update(trajectories, policy_net, optimizer, device, n_iterations, eps)
 
-            # 记录历史
             history["episode_rewards"].append(avg_reward)
             history["fairness"].append(info["avg_fairness"])
             history["performance"].append(info["avg_performance"])
@@ -263,17 +231,14 @@ def train_grpo(env, max_time_minutes=None, max_episodes=None, batch_size=10, lr=
 
 
 def plot_training_curves(history):
-    """绘制训练曲线"""
     fig, axs = plt.subplots(2, 2, figsize=(12, 10))
-
-    # 奖励曲线
+    
     axs[0, 0].plot(history["episode_rewards"])
     axs[0, 0].set_title("avg_rewards")
     axs[0, 0].set_xlabel("epoch")
     axs[0, 0].set_ylabel("reward")
     axs[0, 0].grid(True)
 
-    # 公平性曲线
     axs[0, 1].plot(history["fairness"], label="current fairness")
     axs[0, 1].plot(history["best_fairness"], label="best fairness", linestyle="--")
     axs[0, 1].set_title("fairness metric")
@@ -282,7 +247,6 @@ def plot_training_curves(history):
     axs[0, 1].legend()
     axs[0, 1].grid(True)
 
-    # 性能曲线
     axs[1, 0].plot(history["performance"], label="current performance")
     axs[1, 0].plot(history["best_performance"], label="best performance", linestyle="--")
     axs[1, 0].set_title("performance metric")
@@ -290,8 +254,7 @@ def plot_training_curves(history):
     axs[1, 0].set_ylabel("performance")
     axs[1, 0].legend()
     axs[1, 0].grid(True)
-
-    # 公平性与性能的散点图
+    
     axs[1, 1].scatter(history["fairness"], history["performance"], alpha=0.5)
     axs[1, 1].scatter([history["best_fairness"][-1]], [history["best_performance"][-1]],
                       color="red", s=100, marker="*", label="best")
@@ -314,20 +277,16 @@ if __name__ == "__main__":
     layers_mode = "key_layers"
     neurons_mode = "key_neurons"
     model_paths = [
-        # 'adult-0.6896-982398492-ss-0.2.pt',
-        # 'adult-0.6949-56283202-ss-0.2.pt',
-        # 'adult-0.7004-10989034-ss-0.2.pt',
-        #
-        # 'adult-0.7106-72384123-ss-0.2.pt',
-        # 'adult-0.6997-555293809-ss-0.2.pt',
-        # 'adult-0.6972-190380901-ss-0.2.pt',
-        # 'adult-0.7005-798457928-ss-0.2.pt',
-        # 'adult-0.6945-66628392-ss-0.2.pt',
-        # 'adult-0.6923-76532891-ss-0.2.pt',
-
-        # 'adult-0.6918-82398492-ss-0.2.pt',
-        # 'adult-0.6927-47729329-ss-0.2.pt',
-        # 'adult-0.6920-232495309-ss-0.2.pt',
+      'adult-0.6896-982398492-ss-0.2.pt',
+      'adult-0.6949-56283202-ss-0.2.pt',
+      'adult-0.7004-10989034-ss-0.2.pt',
+      'adult-0.7106-72384123-ss-0.2.pt',
+      'adult-0.6997-555293809-ss-0.2.pt',
+      'adult-0.7005-798457928-ss-0.2.pt',
+      'adult-0.6945-66628392-ss-0.2.pt',
+      'adult-0.6923-76532891-ss-0.2.pt',
+      'adult-0.6918-82398492-ss-0.2.pt',
+      'adult-0.6920-232495309-ss-0.2.pt',
     ]
     for model_path in model_paths:
         _, _, seed, _, dropout_rate = model_path[:-3].split("-")
@@ -344,7 +303,6 @@ if __name__ == "__main__":
         model = AdultCensusModel(p=p).to(device)
         state_dict = torch.load(f"../saved_models/adult/{model_path}", map_location=torch.device('cpu'))
         model.load_state_dict(state_dict)
-        # model.load_state_dict(torch.load(f"../saved_models/adult/{model_path}"))
         model.eval()
 
         baseline_eod, baseline_dpd, baseline_di, baseline_f1, baseline_acc = compute_metrics(
@@ -367,7 +325,6 @@ if __name__ == "__main__":
         print(f"F1: {baseline_f1_test:.4f}")
         print(f"Accuracy: {baseline_acc_test:.4f}")
 
-        # 需要获取key neurons
         hyperparameter_search_type = "RandomSearch"  # RandomSearch or GridSearch
         start_time = time.time()
         layer_sizes_accuracy, key_neurons, total_train_time = (
@@ -434,40 +391,13 @@ if __name__ == "__main__":
         )
 
         save_dict["repaired_accuracy on val"] = repaired_acc
-        save_dict["repaired_fairness_eod on Test (Before fine_tune)"] = repaired_eod_test
-        save_dict["repaired_performance on Test (Before fine_tune)"] = repaired_f1_test
-        save_dict["repaired_accuracy on Test (Before fine_tune)"] = repaired_acc_test
+        save_dict["repaired_fairness_eod on Test"] = repaired_eod_test
+        save_dict["repaired_performance on Test"] = repaired_f1_test
+        save_dict["repaired_accuracy on Test"] = repaired_acc_test
         save_dict["identification time cost"] = identification_time
         save_dict["optimization time cost"] = optimization_time
         save_dict["RF train time cost"] = total_train_time
         save_dict["key_neurons_final_number"] = len(key_neurons_final)
-
-        model.register_scaling_hooks(key_neurons_final, best_scales)
-        env_fine_tune = NeuronScalingEnv(model, key_neurons_final, repaired_eod_test, repaired_f1_test,
-                                    X_test, y_test, sens_test, sens_classes, dataset)
-        obs_dim = len(env_fine_tune.candidate_neurons) + 2
-        action_dim = len(env.candidate_neurons)
-        hidden_dim = action_dim
-        policy_net = PolicyNet(obs_dim, action_dim, hidden_dim)
-        policy_net.load_state_dict(torch.load("policy_net_adult_race_val.pth"))
-
-        start_time = time.time()
-        repaired_eod_test, repaired_f1_test, _, _, best_fairness_list_test, _ = train_grpo(
-            env_fine_tune,
-            max_episodes=100,
-            batch_size=10,
-            lr=0.002,
-            n_iterations=10,
-            eps=0.2,
-            policy_net=policy_net
-        )
-        fine_tune_time = time.time() - start_time
-        save_dict["repaired_fairness_eod on Test (After fine_tune)"] = repaired_eod_test
-        save_dict["repaired_performance on Test (After fine_tune)"] = repaired_f1_test
-        save_dict["repaired_accuracy on Test (After fine_tune)"] = repaired_acc_test
-        save_dict["fine_tune_time"] = fine_tune_time
-        save_dict["best_fairness_list"] = best_fairness_list
-        save_dict["best_fairness_list_test"] = best_fairness_list_test
 
         save_dict = convert_to_builtin_types(save_dict)
 
