@@ -273,7 +273,7 @@ if __name__ == "__main__":
     key_layers_num = 4
     threshold = 0.01
     max_episodes = 200
-    max_time_minutes = 2
+    max_time_minutes = 5
     layers_mode = "key_layers"
     neurons_mode = "key_neurons"
     model_paths = [
