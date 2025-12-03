@@ -41,7 +41,6 @@ class NeuronScalingEnv:
 
     def reset(self):
         self.current_scales = np.zeros(len(self.candidate_neurons))
-        # self.current_scales = np.ones(len(self.candidate_neurons))
         self.current_fairness = self.baseline_fairness
         self.current_performance = self.baseline_performance
         self.apply_scaling(self.current_scales)
@@ -62,23 +61,7 @@ class NeuronScalingEnv:
         print("new_fairness", new_fairness)
         print("new_performance", new_performance)
 
-        # if new_performance >= self.performance_threshold * self.baseline_performance:
-        #     reward = -new_fairness * 100
-        #     if new_fairness < self.best_fairness:
-        #         reward += 1000
-        #         self.best_fairness = new_fairness
-        #         self.best_performance = new_performance
-        #         self.best_scales = action.copy()
-        # else:
-        #     reward = -100
-        # distance_to_neg1 = np.mean(1 + action)
-        # print("distance_to_neg1", distance_to_neg1)
         reward = 0.5 * (1-new_fairness) + 0.5 * new_performance
-        # if new_performance >= self.performance_threshold * self.baseline_performance:
-        #     reward = 1 - new_fairness
-        # else:
-        #     penalty = self.performance_threshold * self.baseline_performance - new_performance
-        #     reward = max(1 - new_fairness - penalty, 0)
 
         if new_performance >= self.performance_threshold * self.baseline_performance and new_fairness<self.best_fairness:
             self.best_fairness = new_fairness
