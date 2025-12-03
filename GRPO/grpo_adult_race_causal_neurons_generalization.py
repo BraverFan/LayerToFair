@@ -11,7 +11,7 @@ from utils import compute_metrics, convert_to_builtin_types, preprocess_adult_ce
 import json
 import os
 
-device = "cpu"
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class PolicyNet(nn.Module):
