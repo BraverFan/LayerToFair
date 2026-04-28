@@ -2,6 +2,7 @@
 Official implementation of the paper "LayerToFair: An Efficient Post-processing Framework for Layer-aware Fairness Repair in Deep Neural Networks".
 ## Framework of LayerToFair
 <img width="1859" height="624" alt="image" src="https://github.com/user-attachments/assets/41e3783e-21f3-4344-a866-72076a559ad2" />
+
 ## Environment Setup
 
 We recommend using a conda environment:
@@ -18,12 +19,9 @@ pip install scikit-learn==1.6.1
 
 ```
 LayerToFair/
-├── data/                  # Datasets and preprocessing scripts
-├── models/                # Pretrained DNN model checkpoints
-├── probes/                # Probe training and bottleneck localization
-├── repair/                # Core repair logic and GRPO optimization
-├── baselines/             # Baseline method implementations
-├── experiments/           # Scripts to reproduce main experiments
-├── results/               # Output results and logs
+├── GRPO/                  # LayerToFair scripts
+├── NeuFair/               # NeuFair scripts
+├── care/                  # CARE scripts
+├── saved models/          # pretrained models 
 └── README.md
 ```
