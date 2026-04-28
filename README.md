@@ -25,3 +25,17 @@ LayerToFair/
 ├── saved models/          # pretrained models 
 └── README.md
 ```
+
+## Usage
+
+To run LayerToFair on a specific dataset with a specific sensitive attribute, simply run the corresponding script under the `GRPO/` folder:
+
+```bash
+python GRPO/grpo_{dataset}_{sensitive_attribute}_generation.py
+```
+
+For example, to run on the Adult dataset with sex as the sensitive attribute:
+
+```bash
+python GRPO/grpo_adult_sex_generation.py
+```
