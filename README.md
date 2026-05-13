@@ -37,7 +37,7 @@ Two key hyperparameters can be configured directly in each run script (`GRPO/grp
 | Parameter | Variable in Script | Default | Description |
 |-----------|-----------|---------|-------------|
 | Importance threshold | `threshold` | `0.01` | Feature importance threshold for key neuron identification. Neurons with importance scores above this threshold are selected as key neurons. |
-| Scale range | `scale_bounds` | `[0, 2]` | Search range for the scaling factors applied to key neuron outputs. |
+| Scale range | `scale_bounds` | `[0,2]` | Search range for the scaling factors applied to key neuron outputs. |
 
 ## Reproducing Multi-Seed Results
 All experiments are run with 10 random seeds to account for randomness in the repair process. The pretrained models corresponding to all 10 seeds are integrated in the `model_paths` list in each run script, and all seeds are executed in a single run by default.
