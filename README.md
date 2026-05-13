@@ -36,7 +36,7 @@ Two key hyperparameters can be configured directly in each run script (`GRPO/grp
 
 | Parameter | Variable in Script | Default | Description |
 |-----------|-----------|---------|-------------|
-| Importance threshold | `threshold` | `0.01` | Feature importance threshold for key neuron identification. Neurons with importance scores above this threshold are selected as key neurons. |
+| Importance threshold | `threshold` |  `0.01` | Feature importance threshold for key neuron identification. Neurons with importance scores above this threshold are selected as key neurons. |
 | Scale range | `scale_bounds` | `[0,2]` | Search range for the scaling factors applied to key neuron outputs. |
 
 ## Reproducing Multi-Seed Results
