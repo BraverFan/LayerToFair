@@ -90,7 +90,7 @@ class KeyNeuronsIdentification:
                 search = RandomizedSearchCV(
                     estimator=rf_model,
                     param_distributions=param_grid,
-                    n_iter=20,
+                    n_iter=10,
                     cv=skf,
                     scoring='balanced_accuracy',
                     n_jobs=-1,
