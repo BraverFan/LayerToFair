@@ -48,3 +48,267 @@ python GRPO/grpo_{dataset}_{sensitive_attribute}.py
 ```
 If you wish to run a specific seed only, comment out the other entries in the `model_paths` list in the corresponding script before running.
 
+# Reproducing Experimental Results
+
+This document provides instructions for reproducing the experimental results corresponding to each research question (RQ) in our paper.
+
+For all commands below:
+
+- `{dataset}` represents the dataset name (e.g., `adult`, `bank`, `compas`, `default`, `meps16`).
+- `{sensitive_attribute}` represents the sensitive attribute used in the experiment (e.g., `sex`, `race`).
+
+Users can reproduce the reported results by replacing these placeholders with the corresponding dataset and sensitive attribute.
+
+---
+
+## RQ1: Comparison with Existing Fairness Repair Methods
+
+RQ1 evaluates the effectiveness of LayerToFair compared with existing fairness repair methods.
+
+### LayerToFair (Our Method)
+
+To reproduce the results of LayerToFair, run:
+
+```bash
+python GRPO/grpo_{dataset}_{sensitive_attribute}.py
+```
+
+The optimization time can be controlled by modifying the following parameter in the corresponding script:
+
+```python
+max_time_minutes
+```
+
+---
+
+### NeuFair
+
+To reproduce the results of NeuFair, run:
+
+```bash
+python NeuFair/final_{dataset}_{sensitive_attribute}.py
+```
+
+---
+
+### CARE
+
+To reproduce the results of CARE, run:
+
+```bash
+python care/care_{dataset}_{sensitive_attribute}.py
+```
+
+---
+
+### FairFLRep
+
+The implementation of FairFLRep is available at:
+
+https://github.com/openjamoses/FairFLRep
+
+Run:
+
+```bash
+python fairflrep.py
+```
+
+to reproduce the corresponding results.
+
+---
+
+# RQ2: Effect of Different Layer Repair Strategies
+
+RQ2 studies the impact of different layer repair strategies, including:
+
+- Key Layers
+- All Layers
+- Last Layer
+
+---
+
+## Key Layers
+
+To reproduce the Key Layers strategy, run:
+
+```bash
+python GRPO/grpo_{dataset}_{sensitive_attribute}.py
+```
+
+The number of repaired layers can be controlled by modifying:
+
+```python
+key_layers_num
+```
+
+in the corresponding script.
+
+For example:
+
+```python
+key_layers_num = 4
+```
+
+means that four key layers are repaired.
+
+---
+
+## All Layers
+
+To reproduce the All Layers strategy, run:
+
+```bash
+python GRPO/grpo_{dataset}_{sensitive_attribute}_all_layers.py
+```
+
+Alternatively, modify the following line in:
+
+```bash
+python GRPO/grpo_{dataset}_{sensitive_attribute}.py
+```
+
+as:
+
+```python
+layer_name_keys = list(key_neurons.keys())
+```
+
+to repair all hidden layers.
+
+---
+
+## Last Layer
+
+To reproduce the Last Layer strategy, run:
+
+```bash
+python GRPO/grpo_{dataset}_{sensitive_attribute}.py
+```
+
+and modify:
+
+```python
+layer_name_keys = list(key_neurons.keys())[-1:]
+```
+
+to repair only the last hidden layer.
+
+---
+
+# RQ3: Effect of Different Neuron Identification Strategies
+
+RQ3 investigates the influence of different neuron identification strategies.
+
+---
+
+## LayerToFair (Our Method)
+
+Run:
+
+```bash
+python GRPO/grpo_{dataset}_{sensitive_attribute}.py
+```
+
+---
+
+## Random Neuron Identification Strategy
+
+Run:
+
+```bash
+python GRPO/grpo_{dataset}_{sensitive_attribute}_random_neurons.py
+```
+
+---
+
+## Gradient-based Neuron Identification Strategy
+
+Run:
+
+```bash
+python GRPO/grpo_{dataset}_{sensitive_attribute}_grad_neurons.py
+```
+
+---
+
+## Causality-based Neuron Identification Strategy
+
+Run:
+
+```bash
+python GRPO/grpo_{dataset}_{sensitive_attribute}_causal_neurons.py
+```
+
+---
+
+# RQ4: Effect of Different Optimization Algorithms
+
+RQ4 compares different optimization algorithms for fairness repair.
+
+The compared optimization methods include:
+
+- GRPO
+- PPO
+- PSO
+
+---
+
+## GRPO
+
+Run:
+
+```bash
+python GRPO/grpo_{dataset}_{sensitive_attribute}.py
+```
+
+---
+
+## PPO
+
+Run:
+
+```bash
+python GRPO/ppo_{dataset}_{sensitive_attribute}.py
+```
+
+---
+
+## PSO
+
+Run:
+
+```bash
+python care/care_{dataset}_{sensitive_attribute}.py
+```
+
+For a fair comparison, the neuron localization module in CARE should be replaced with the neuron identification module implemented in:
+
+```bash
+python GRPO/grpo_{dataset}_{sensitive_attribute}.py
+```
+
+while keeping the PSO optimization procedure unchanged.
+
+---
+
+# RQ5: Effect of Feature Importance Threshold
+
+RQ5 evaluates the impact of different feature importance thresholds.
+
+To reproduce the results, run:
+
+```bash
+python GRPO/grpo_{dataset}_{sensitive_attribute}.py
+```
+
+The feature importance threshold can be adjusted by modifying:
+
+```python
+threshold
+```
+
+in the corresponding script.
+
+Different values of `threshold` generate results under different feature importance selection criteria.
+
+---
