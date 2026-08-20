@@ -323,13 +323,6 @@ the EOD metric, directly run:
 ```bash
 python GRPO/grpo_{dataset}_{sensitive_attribute}.py
 ```
-
-For example:
-
-```bash
-python GRPO/grpo_Adult_Sex.py
-```
-
 ---
 
 ## SPD Metric
