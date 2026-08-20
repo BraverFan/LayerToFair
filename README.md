@@ -312,3 +312,82 @@ in the corresponding script.
 Different values of `threshold` generate results under different feature importance selection criteria.
 
 ---
+
+# RQ6 Flexible Fairness Metric Adaptation
+
+## EOD Metric
+
+By default, LayerToFair optimizes the EOD metric. To reproduce the results under 
+the EOD metric, directly run:
+
+```bash
+python GRPO/grpo_{dataset}_{sensitive_attribute}.py
+```
+
+For example:
+
+```bash
+python GRPO/grpo_Adult_Sex.py
+```
+
+---
+
+## SPD Metric
+
+To reproduce the results under the SPD metric, modify 
+`GRPO/Environment.py`.
+
+Find:
+
+```python
+new_fairness, _, _, new_performance, _ = compute_metrics(
+    self.model, self.X_val, self.y_val,
+    self.sens_val, self.sens_classes, self.dataset
+)
+```
+
+Replace with:
+
+```python
+_, new_fairness, _, new_performance, _ = compute_metrics(
+    self.model, self.X_val, self.y_val,
+    self.sens_val, self.sens_classes, self.dataset
+)
+```
+
+Then run:
+
+```bash
+python GRPO/grpo_{dataset}_{sensitive_attribute}.py
+```
+
+---
+
+## DI Metric
+
+To reproduce the results under the DI metric, modify 
+`GRPO/Environment.py`.
+
+Find:
+
+```python
+new_fairness, _, _, new_performance, _ = compute_metrics(
+    self.model, self.X_val, self.y_val,
+    self.sens_val, self.sens_classes, self.dataset
+)
+```
+
+Replace with:
+
+```python
+_, _, new_fairness, new_performance, _ = compute_metrics(
+    self.model, self.X_val, self.y_val,
+    self.sens_val, self.sens_classes, self.dataset
+)
+```
+
+Then run:
+
+```bash
+python GRPO/grpo_{dataset}_{sensitive_attribute}.py
+```
